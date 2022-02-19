@@ -136,8 +136,9 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
             step_min *= iteration.step_factor
         end
 
-        # Acceleration step
-        @. x_accel = x0 - 2 * alpha * r + alpha^2 * v
+        # Acceleration step using Horner's Method
+        # Equivalent to @. x_accel = x0 - 2 * alpha * r + alpha^2 * v
+        @. x_accel = muladd(alpha, muladd(alpha, v, -2 * r), x0)
 
         contraction!(x0, x_accel)
         evaluations += 1
