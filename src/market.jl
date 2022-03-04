@@ -14,13 +14,19 @@ end
 Base.eltype(::Type{Market{T}}) where {T} = T
 
 """ Individuals in market. """
-I(market::Market) = length(market.weights)
+num_individuals(market::Market) = length(market.weights)
 
 """ Products in market. """
-J(market::Market) = size(market.x2, 1)
+num_products(market::Market) = size(market.x2, 1)
 
 """ Demand-side nonlinear product characteristics. """
-K2(market::Market) = size(market.x2, 2)
+num_nonlinear_demand_characteristics(market::Market) = size(market.x2, 2)
+
+""" "Compute the mean utility that solves the simple logit model. """
+function compute_logit_delta(market)
+    # log1p(-x) ≡ log(1-x) but faster and more accurately
+    return log.(market.shares) .- log1p(-sum(market.shares))
+end
 
 """ Compute the mean utility for this market that equates observed and predicted market shares. """
 function compute_delta(market::Market, iteration, sigma)
@@ -39,20 +45,22 @@ function compute_delta_impl(market::Market, iteration, sigma)
     mu = compute_mu(market, sigma)
     log_market_shares = log.(market.shares)
 
-    I = I(market)
-    J = J(market)
+    I = num_individuals(market)
+    J = num_products(market)
 
     # Speed is imperative for the contraction mapping so avoid unnecessary memory allocations by
     # pre-allocating and then using in-place operations. Unfortunately, this makes the code a bit
     # harder to understand.
+    utilities = Matrix{eltype(market)}(undef, J, I)
     probabilities = Matrix{eltype(market)}(undef, J, I)
     shares = Vector{eltype(market)}(undef, J)
 
     function contraction!(delta_out::AbstractVector, delta_in::AbstractVector)
-        choice_probabilities!(probabilities, delta_in, mu)
+        @. utilities = delta_in + mu
+        choice_probabilities!(probabilities, utilities)
         mul!(shares, probabilities, market.weights)  # Compute market share by integrating over individuals
         @. delta_out = delta_in + log_market_shares - log(shares)
     end
 
-    return fixed_point_iteration(iteration, logit_delta(market), contraction!), shares, probabilities
+    return fixed_point_iteration(iteration, compute_logit_delta(market), contraction!), shares, probabilities
 end
