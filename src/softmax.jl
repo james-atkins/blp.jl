@@ -29,10 +29,10 @@ function choice_probabilities!(output::AbstractMatrix{T}, utilities::AbstractMat
             end
         end
 
-        sigma = @fastmath exp(-max_u)
+        sigma = exp(-max_u)
 
         @simd ivdep for j = 1:J
-            output[j, i] = @fastmath exp(utilities[j, i] - max_u)
+            output[j, i] = exp(utilities[j, i] - max_u)
             # SIMD makes left-to-right summation both faster and more accurate
             # https://discourse.julialang.org/t/when-shouldnt-we-use-simd/18276/14
             sigma += output[j, i]
