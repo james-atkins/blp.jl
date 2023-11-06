@@ -35,7 +35,9 @@ end
 
 export SimpleFixedPointIteration
 
-Base.@kwdef struct SimpleFixedPointIteration
+abstract type Iteration end
+
+Base.@kwdef struct SimpleFixedPointIteration <: Iteration
     tolerance::Float64 = 1e-14
     max_iterations::Integer = 5_000
 end
@@ -67,7 +69,7 @@ export SQUAREMIteration, SQUAREM1, SQUAREM2, SQUAREM3
 
 @enum SQUAREMScheme SQUAREM1=1 SQUAREM2=2 SQUAREM3=3
 
-Base.@kwdef struct SQUAREMIteration
+Base.@kwdef struct SQUAREMIteration <: Iteration
     max_iterations::Int = 1_000
     tolerance::Float64 = 1e-14
     scheme::SQUAREMScheme = SQUAREM3

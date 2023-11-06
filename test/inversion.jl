@@ -7,6 +7,7 @@
 
     sigma = [2.0 0.0; 4.0 1.0]
     K2 = size(sigma, 1)
+    theta2 = Theta2(sigma)
 
     x2 = exp.(randn((J, K2)))
     nodes = randn((I, K2))
@@ -17,9 +18,9 @@
 
     shares = choice_probabilities(delta .+ mu) * weights
 
-    market = Market(x2, shares, weights, nodes)
+    market = Market(shares, x2, weights, nodes)
 
-    result = compute_delta(market, it, sigma)
+    result = compute_delta(market, theta2, it)
 
     @test result.status == ITERATION_CONVERGED
     @test result.delta ≈ delta

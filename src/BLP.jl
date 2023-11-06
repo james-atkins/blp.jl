@@ -1,7 +1,8 @@
 module BLP
 
 import LinearAlgebra as LA
-using LinearAlgebra: LowerTriangular, ⋅, mul!
+using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!
+using NLsolve
 
 include("iteration.jl")
 include("softmax.jl")
