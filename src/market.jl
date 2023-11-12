@@ -5,7 +5,7 @@ struct Theta2{T<:AbstractFloat}
 	pi::Matrix{T}                         # K2 x D
 end
 
-function Theta2(sigma::Sigma where Sigma <: AbstractMatrix, pi::Pi where Pi<:AbstractMatrix)
+function Theta2(sigma::AbstractMatrix, pi::AbstractMatrix)
     return Theta2(LowerTriangular(sigma), copy(pi))
 end
 
