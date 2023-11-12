@@ -1,4 +1,3 @@
-export IterationResult, IterationStatus, ITERATION_CONVERGED, ITERATION_NUMERICAL_ISSUES, ITERATION_EXCEEDED_MAX_ITERATIONS, fixed_point_iteration
 
 function within_tolerance(x, x_next, tolerance)
     for (a, b) in zip(x, x_next)
@@ -20,23 +19,6 @@ function numerical_issues(x)
     return false
 end
 
-@enum IterationStatus begin
-    ITERATION_CONVERGED
-    ITERATION_NUMERICAL_ISSUES
-    ITERATION_EXCEEDED_MAX_ITERATIONS
-end
-
-struct IterationResult
-    status::IterationStatus
-    delta::Vector{Float64}
-    iterations::Int32
-    evaluations::Int32
-end
-
-export SimpleFixedPointIteration
-
-abstract type Iteration end
-
 Base.@kwdef struct SimpleFixedPointIteration <: Iteration
     tolerance::Float64 = 1e-14
     max_iterations::Integer = 5_000
@@ -52,20 +34,18 @@ function fixed_point_iteration(iteration::SimpleFixedPointIteration, x0::Abstrac
         iterations += 1
 
         if numerical_issues(x_next)
-            return IterationResult(ITERATION_NUMERICAL_ISSUES, x, iterations, iterations)
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, x, iterations, iterations)
         end
 
         if within_tolerance(x, x_next, iteration.tolerance)
-            return IterationResult(ITERATION_CONVERGED, x_next, iterations, iterations)
+            return InversionResult(INVERSION_CONVERGED, x_next, iterations, iterations)
         end
 
         x .= x_next
     end
 
-    return IterationResult(ITERATION_EXCEEDED_MAX_ITERATIONS, x, iterations, iterations)
+    return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, x, iterations, iterations)
 end
-
-export SQUAREMIteration, SQUAREM1, SQUAREM2, SQUAREM3
 
 @enum SQUAREMScheme SQUAREM1=1 SQUAREM2=2 SQUAREM3=3
 
@@ -98,11 +78,11 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
         evaluations += 1
 
         if numerical_issues(x1)
-            return IterationResult(ITERATION_NUMERICAL_ISSUES, x0, iterations, evaluations)
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, x0, iterations, evaluations)
         end
 
         if within_tolerance(x1, x0, iteration.tolerance)
-            return IterationResult(ITERATION_CONVERGED, x1, iterations, evaluations)
+            return InversionResult(INVERSION_CONVERGED, x1, iterations, evaluations)
         end
 
         # Second step
@@ -110,11 +90,11 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
         evaluations += 1
 
         if numerical_issues(x2)
-            return IterationResult(ITERATION_NUMERICAL_ISSUES, x1, iterations, evaluations)
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, x1, iterations, evaluations)
         end
 
         if within_tolerance(x2, x1, iteration.tolerance)
-            return IterationResult(ITERATION_CONVERGED, x2, iterations, evaluations)
+            return InversionResult(INVERSION_CONVERGED, x2, iterations, evaluations)
         end
 
         @. r = x1 - x0
@@ -147,13 +127,13 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
         iterations += 1
 
         if numerical_issues(x0)
-            return IterationResult(ITERATION_NUMERICAL_ISSUES, x1, iterations, evaluations)
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, x1, iterations, evaluations)
         end
 
         if within_tolerance(x0, x_accel, iteration.tolerance)
-            return IterationResult(ITERATION_CONVERGED, x2, iterations, evaluations)
+            return InversionResult(INVERSION_CONVERGED, x2, iterations, evaluations)
         end
     end
 
-    return IterationResult(ITERATION_EXCEEDED_MAX_ITERATIONS, x0, iterations, evaluations)
+    return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, x0, iterations, evaluations)
 end

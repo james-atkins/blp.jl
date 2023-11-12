@@ -22,6 +22,6 @@
 
     result = compute_delta(market, theta2, it)
 
-    @test result.status == ITERATION_CONVERGED
+    @test result.status == INVERSION_CONVERGED
     @test result.delta ≈ delta
 end

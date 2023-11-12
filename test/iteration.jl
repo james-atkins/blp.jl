@@ -11,7 +11,7 @@
     initial = ones(2)
     result = fixed_point_iteration(it, initial, contraction!)
 
-    @test result.status == ITERATION_CONVERGED
+    @test result.status == INVERSION_CONVERGED
     @test result.delta ≈ [1.4920333, 1.37228132]
 end
 
@@ -36,6 +36,6 @@ end
     initial = [0.2, 2.5, 1.5]
 
     result = fixed_point_iteration(it, initial, contraction!)
-    @test result.status == ITERATION_CONVERGED
+    @test result.status == INVERSION_CONVERGED
     @test result.delta ≈ [0.6401146029910, 2.6634043566619, 1.2560951012662]
 end
