@@ -20,11 +20,15 @@ function numerical_issues(x)
 end
 
 Base.@kwdef struct SimpleFixedPointIteration <: Iteration
-    tolerance::Float64 = 1e-14
     max_iterations::Integer = 5_000
 end
 
-function fixed_point_iteration(iteration::SimpleFixedPointIteration, x0::AbstractVector, contraction!::Function)
+function fixed_point_iteration(
+    iteration::SimpleFixedPointIteration,
+    x0::AbstractVector,
+    contraction!::Function;
+    tolerance,
+)
     x = copy(x0)
     x_next = similar(x)
     iterations = 0
@@ -37,7 +41,7 @@ function fixed_point_iteration(iteration::SimpleFixedPointIteration, x0::Abstrac
             return InversionResult(INVERSION_NUMERICAL_ISSUES, x, iterations, iterations)
         end
 
-        if within_tolerance(x, x_next, iteration.tolerance)
+        if within_tolerance(x, x_next, tolerance)
             return InversionResult(INVERSION_CONVERGED, x_next, iterations, iterations)
         end
 
@@ -51,14 +55,18 @@ end
 
 Base.@kwdef struct SQUAREMIteration <: Iteration
     max_iterations::Int = 1_000
-    tolerance::Float64 = 1e-14
     scheme::SQUAREMScheme = SQUAREM3
     step_min::Float64 = 1.0
     step_max::Float64 = 1.0
     step_factor::Float64 = 4.0
 end
 
-function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractVector, contraction!::Function)
+function fixed_point_iteration(
+    iteration::SQUAREMIteration,
+    x_initial::AbstractVector,
+    contraction!::Function;
+    tolerance,
+)
     x0 = copy(x_initial)
     x1 = similar(x0)
     x2 = similar(x0)
@@ -81,7 +89,7 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
             return InversionResult(INVERSION_NUMERICAL_ISSUES, x0, iterations, evaluations)
         end
 
-        if within_tolerance(x1, x0, iteration.tolerance)
+        if within_tolerance(x1, x0, tolerance)
             return InversionResult(INVERSION_CONVERGED, x1, iterations, evaluations)
         end
 
@@ -93,7 +101,7 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
             return InversionResult(INVERSION_NUMERICAL_ISSUES, x1, iterations, evaluations)
         end
 
-        if within_tolerance(x2, x1, iteration.tolerance)
+        if within_tolerance(x2, x1, tolerance)
             return InversionResult(INVERSION_CONVERGED, x2, iterations, evaluations)
         end
 
@@ -130,7 +138,7 @@ function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractV
             return InversionResult(INVERSION_NUMERICAL_ISSUES, x1, iterations, evaluations)
         end
 
-        if within_tolerance(x0, x_accel, iteration.tolerance)
+        if within_tolerance(x0, x_accel, tolerance)
             return InversionResult(INVERSION_CONVERGED, x2, iterations, evaluations)
         end
     end

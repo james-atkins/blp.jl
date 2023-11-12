@@ -95,7 +95,7 @@ end
 """
 Solve for the mean utility for this market that equates observed and predicted market shares.
 """
-function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion)
+function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion; tolerance = 1E-14)
     mu = compute_mu(market, theta2)
 
     # Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
@@ -136,7 +136,7 @@ function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion)
         res = nlsolve(
             only_fj!(fj!),
             initial_delta;
-            xtol = 1E-14,
+            xtol = tolerance,
             iterations = config.iterations,
             ftol = config.ftol,
             method = config.method,
@@ -161,7 +161,7 @@ Solve for the mean utility for this market that equates observed and predicted m
 
 This method uses the BLP contraction mapping approach.
 """
-function compute_delta(market::Market, theta::Theta2, iteration::Iteration)
+function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tolerance = 1E-14)
     mu = compute_mu(market, theta)
     log_market_shares = log.(market.shares)
 
@@ -181,5 +181,5 @@ function compute_delta(market::Market, theta::Theta2, iteration::Iteration)
         @. delta_out = delta_in + log_market_shares - log(shares)
     end
 
-    return fixed_point_iteration(iteration, logit_delta(market), contraction!)
+    return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance)
 end
