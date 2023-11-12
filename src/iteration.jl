@@ -26,7 +26,7 @@ end
 
 function fixed_point_iteration(iteration::SimpleFixedPointIteration, x0::AbstractVector, contraction!::Function)
     x = copy(x0)
-    x_next = Vector{eltype(x)}(undef, length(x))
+    x_next = similar(x)
     iterations = 0
 
     while iterations < iteration.max_iterations
@@ -60,11 +60,11 @@ end
 
 function fixed_point_iteration(iteration::SQUAREMIteration, x_initial::AbstractVector, contraction!::Function)
     x0 = copy(x_initial)
-    x1 = Vector{eltype(x0)}(undef, length(x0))
-    x2 = Vector{eltype(x0)}(undef, length(x0))
-    x_accel = Vector{eltype(x0)}(undef, length(x0))
-    r = Vector{eltype(x0)}(undef, length(x0))
-    v = Vector{eltype(x0)}(undef, length(x0))
+    x1 = similar(x0)
+    x2 = similar(x0)
+    x_accel = similar(x0)
+    r = similar(x0)
+    v = similar(x0)
 
     step_min = iteration.step_min
     step_max = iteration.step_max
