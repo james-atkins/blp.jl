@@ -105,7 +105,7 @@ function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion;
     probs = similar(mu)
     weighted_probs = similar(mu)
     utilities = similar(mu)
-    shares = Vector{eltype(market)}(undef, market.J)
+    shares = similar(market.shares)
 
     function fj!(F, J, delta)
         @. utilities = delta + mu
@@ -165,14 +165,12 @@ function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tole
     mu = compute_mu(market, theta)
     log_market_shares = log.(market.shares)
 
-    J, I = market.J, market.I
-
     # Speed is imperative for the contraction mapping so avoid unnecessary memory allocations by
     # pre-allocating and then using in-place operations. Unfortunately, this makes the code a bit
     # harder to understand.
-    utilities = Matrix{eltype(market)}(undef, J, I)
-    probabilities = Matrix{eltype(market)}(undef, J, I)
-    shares = Vector{eltype(market)}(undef, J)
+    utilities = similar(mu)
+    probabilities = similar(mu)
+    shares = similar(market.shares)
 
     function contraction!(delta_out, delta_in)
         @. utilities = delta_in + mu
