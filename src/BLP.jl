@@ -2,7 +2,7 @@ module BLP
 
 import LinearAlgebra as LA
 using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!
-using NLsolve
+using NLsolve: IsFiniteException, nlsolve, converged, only_fj!
 
 @enum InversionStatus begin
     INVERSION_CONVERGED

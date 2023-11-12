@@ -1,4 +1,4 @@
-@testset "BLP inversion: $it" for it in (SimpleFixedPointIteration(), SQUAREMIteration())
+@testset "BLP inversion: $it" for it in (SimpleFixedPointIteration(), SQUAREMIteration(), NLSolveInversion())
     # This random seed gives enough of an outside option so the contraction can swiftly converge
     Random.seed!(123)
 

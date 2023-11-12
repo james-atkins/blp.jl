@@ -66,12 +66,17 @@ function compute_mu(market::Market, theta2::Theta2)
 	return market.x2 * ((theta2.sigma * market.tastes') + (theta2.pi * market.demographics'))
 end
 
-struct NLSolveInversion end
+Base.@kwdef struct NLSolveInversion
+    method = :newton
+    iterations = 1_000
+    ftol::Float64 = 0.0
+end
+
 
 """
 Solve for the mean utility for this market that equates observed and predicted market shares.
 """
-function compute_delta(market::Market, theta2::Theta2, ::NLSolveInversion)
+function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion)
 	mu = compute_mu(market, theta2)
 
 	# Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
@@ -106,7 +111,23 @@ function compute_delta(market::Market, theta2::Theta2, ::NLSolveInversion)
 	end
 
 	initial_delta = logit_delta(market)
-	return nlsolve(only_fj!(fj!), initial_delta)
+
+    local res
+    try
+        res = nlsolve(only_fj!(fj!), initial_delta; xtol=1E-14, iterations=config.iterations, ftol=config.ftol, method=config.method)
+    catch e
+        if e isa IsFiniteException
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, initial_delta, 0, 0)
+        else
+            rethrow(e)
+        end
+    end
+
+    if !converged(res)
+        return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, res.zero, res.iterations, res.f_calls)
+    end
+
+    return InversionResult(INVERSION_CONVERGED, res.zero, res.iterations, res.f_calls)
 end
 
 """
