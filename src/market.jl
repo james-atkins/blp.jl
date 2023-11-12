@@ -1,8 +1,8 @@
 export Market, Theta2, NLSolveInversion, compute_mu, compute_delta
 
-struct Theta2{T<:AbstractFloat}
-	sigma::LowerTriangular{T, Matrix{T}}  # K2 x K2 lower triangle
-	pi::Matrix{T}                         # K2 x D
+struct Theta2{T <: AbstractFloat}
+    sigma::LowerTriangular{T, Matrix{T}}  # K2 x K2 lower triangle
+    pi::Matrix{T}                         # K2 x D
 end
 
 function Theta2(sigma::AbstractMatrix, pi::AbstractMatrix)
@@ -15,7 +15,14 @@ function Theta2(sigma)
     return Theta2(sigma, pi)
 end
 
-struct Market{T<:AbstractFloat, Shares<:AbstractVector{T}, X2<:AbstractMatrix{T}, Weights<:AbstractVector{T}, Tastes<:AbstractMatrix{T}, Demographics<:AbstractMatrix{T}}
+struct Market{
+    T <: AbstractFloat,
+    Shares <: AbstractVector{T},
+    X2 <: AbstractMatrix{T},
+    Weights <: AbstractVector{T},
+    Tastes <: AbstractMatrix{T},
+    Demographics <: AbstractMatrix{T},
+}
     shares::Shares              # J
     x2::X2                      # J x K2
     weights::Weights            # I
@@ -44,7 +51,17 @@ struct Market{T<:AbstractFloat, Shares<:AbstractVector{T}, X2<:AbstractMatrix{T}
         I, D = size(demographics)
 
         T = promote_type(eltype(shares), eltype(x2), eltype(weights), eltype(demographics))
-        new{T, typeof(shares), typeof(x2), typeof(weights), typeof(tastes), typeof(demographics)}(shares, x2, weights, tastes, demographics, J, I, K2, D)
+        new{T, typeof(shares), typeof(x2), typeof(weights), typeof(tastes), typeof(demographics)}(
+            shares,
+            x2,
+            weights,
+            tastes,
+            demographics,
+            J,
+            I,
+            K2,
+            D,
+        )
     end
 end
 
@@ -53,7 +70,9 @@ function Market(shares, x2, weights, tastes)
     return Market(shares, x2, weights, tastes, demographics)
 end
 
-Base.eltype(::Type{Market{T, Shares, X2, Weights, Tastes, Demographics}}) where {T, Shares, X2, Weights, Tastes, Demographics} = T
+Base.eltype(
+    ::Type{Market{T, Shares, X2, Weights, Tastes, Demographics}},
+) where {T, Shares, X2, Weights, Tastes, Demographics} = T
 
 """ "Compute the mean utility that solves the simple logit model. """
 function logit_delta(market)
@@ -63,7 +82,7 @@ end
 
 function compute_mu(market::Market, theta2::Theta2)
     # Returns a J x I matrix
-	return market.x2 * ((theta2.sigma * market.tastes') + (theta2.pi * market.demographics'))
+    return market.x2 * ((theta2.sigma * market.tastes') + (theta2.pi * market.demographics'))
 end
 
 Base.@kwdef struct NLSolveInversion
@@ -77,9 +96,9 @@ end
 Solve for the mean utility for this market that equates observed and predicted market shares.
 """
 function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion)
-	mu = compute_mu(market, theta2)
+    mu = compute_mu(market, theta2)
 
-	# Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
+    # Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
     # pre-allocating and then using in-place operations. Unfortunately, this makes the code a bit
     # harder to understand.
     utilities = similar(mu)
@@ -88,33 +107,40 @@ function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion)
     utilities = similar(mu)
     shares = Vector{eltype(market)}(undef, market.J)
 
-	function fj!(F, J, delta)
-	    @. utilities = delta + mu
-		choice_probabilities!(probs, utilities)
+    function fj!(F, J, delta)
+        @. utilities = delta + mu
+        choice_probabilities!(probs, utilities)
 
-		# Integrate over individuals to compute market shares
-		mul!(shares, probs, market.weights)
+        # Integrate over individuals to compute market shares
+        mul!(shares, probs, market.weights)
 
-		# Compute difference between predicted and observed market shares
-	    if F !== nothing
-			@. F = shares - market.shares
-	    end
+        # Compute difference between predicted and observed market shares
+        if F !== nothing
+            @. F = shares - market.shares
+        end
 
-		# Compute Jacobian of predicted market shares with respect to delta
-	    if J !== nothing
-			@. weighted_probs = probs * market.weights'
+        # Compute Jacobian of predicted market shares with respect to delta
+        if J !== nothing
+            @. weighted_probs = probs * market.weights'
 
-			# In-place equivalent to Diagonal(shares) - (probs * weighted_probs')
-			J[:] = Diagonal(shares)
-			mul!(J, probs, weighted_probs', -1, 1)
-	    end
-	end
+            # In-place equivalent to Diagonal(shares) - (probs * weighted_probs')
+            J[:] = Diagonal(shares)
+            mul!(J, probs, weighted_probs', -1, 1)
+        end
+    end
 
-	initial_delta = logit_delta(market)
+    initial_delta = logit_delta(market)
 
     local res
     try
-        res = nlsolve(only_fj!(fj!), initial_delta; xtol=1E-14, iterations=config.iterations, ftol=config.ftol, method=config.method)
+        res = nlsolve(
+            only_fj!(fj!),
+            initial_delta;
+            xtol = 1E-14,
+            iterations = config.iterations,
+            ftol = config.ftol,
+            method = config.method,
+        )
     catch e
         if e isa IsFiniteException
             return InversionResult(INVERSION_NUMERICAL_ISSUES, initial_delta, 0, 0)

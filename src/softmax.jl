@@ -17,7 +17,7 @@ Compute the choice probabilities in-place using an overflow safe algorithm.
 Based on the SoftmaxThreePassReload function from
 Dukhan and Ablavatski (2020), The Two-Pass Softmax Algorithm (https://arxiv.org/abs/2001.04438).
 """
-function choice_probabilities!(output::AbstractMatrix{T}, utilities::AbstractMatrix{T}) where T<:AbstractFloat
+function choice_probabilities!(output::AbstractMatrix{T}, utilities::AbstractMatrix{T}) where {T <: AbstractFloat}
     @assert size(output) == size(utilities) "Output matrix must have same size as utilities matrix."
     J, I = size(utilities)
 
@@ -37,7 +37,7 @@ function choice_probabilities!(output::AbstractMatrix{T}, utilities::AbstractMat
             # https://discourse.julialang.org/t/when-shouldnt-we-use-simd/18276/14
             sigma += output[j, i]
         end
-    
+
         sigma_inv = 1 / sigma
         @simd ivdep for j = 1:J
             output[j, i] *= sigma_inv

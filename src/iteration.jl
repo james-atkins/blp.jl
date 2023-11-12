@@ -47,7 +47,7 @@ function fixed_point_iteration(iteration::SimpleFixedPointIteration, x0::Abstrac
     return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, x, iterations, iterations)
 end
 
-@enum SQUAREMScheme SQUAREM1=1 SQUAREM2=2 SQUAREM3=3
+@enum SQUAREMScheme SQUAREM1 = 1 SQUAREM2 = 2 SQUAREM3 = 3
 
 Base.@kwdef struct SQUAREMIteration <: Iteration
     max_iterations::Int = 1_000

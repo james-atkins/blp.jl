@@ -22,16 +22,12 @@ end
         y = [162, 267, 271, 185, 111, 61, 27, 8, 3, 1]
         i = 0:length(y)-1
         z = @. (x[1] * exp(-x[2]) * x[2]^i) / (x[1] * exp(-x[2]) * x[2]^i + (1 - x[1]) * exp(-x[3]) * x[3]^i)
-    
-        x_out[:] = @. [
-            $sum(y * z) / $sum(y),
-            $sum(y * i * z) / $sum(y .* z),
-            $sum(y * i * (1-z)) / $sum(y * (1-z))
-        ]
+
+        x_out[:] = @. [$sum(y * z) / $sum(y), $sum(y * i * z) / $sum(y .* z), $sum(y * i * (1 - z)) / $sum(y * (1 - z))]
         return x_out
     end
 
-    it = SQUAREMIteration(scheme=scheme)
+    it = SQUAREMIteration(scheme = scheme)
 
     initial = [0.2, 2.5, 1.5]
 

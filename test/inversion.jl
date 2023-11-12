@@ -11,7 +11,7 @@
 
     x2 = exp.(randn((J, K2)))
     nodes = randn((I, K2))
-    weights = fill(1/I, I)
+    weights = fill(1 / I, I)
 
     delta = exp.(randn(J))
     mu = x2 * sigma * nodes'
