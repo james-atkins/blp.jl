@@ -27,6 +27,8 @@ include("iteration.jl")
 export Iteration, fixed_point_iteration, SimpleFixedPointIteration, SQUAREMIteration, SQUAREM1, SQUAREM2, SQUAREM3
 
 include("softmax.jl")
+export choice_probabilities, choice_probabilities!
+
 include("market.jl")
 
 end

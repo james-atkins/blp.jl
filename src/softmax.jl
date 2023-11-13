@@ -1,5 +1,3 @@
-export choice_probabilities, choice_probabilities!
-
 """
 Compute the choice probabilities using an overflow safe algorithm.
 
