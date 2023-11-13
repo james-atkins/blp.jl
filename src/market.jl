@@ -181,3 +181,40 @@ function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tole
 
     return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance)
 end
+
+
+function jacobian_shares_by_delta(market::Market, probabilities::AbstractMatrix)
+    shares = probabilities * market.weights
+    weighted_probabilities = probabilities .* market.weights'
+
+    return Diagonal(shares) .- (probabilities * weighted_probabilities')
+end
+
+
+function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix)
+    P = div(market.K2 * (market.K2 + 1), 2) + (market.K2 * market.D)
+    jacobian = Matrix{eltype(market)}(undef, market.J, P)
+    p = 1
+
+    # Loop over the indices of sigma, i.e. indices of lower triangle matrix
+    for col_idx = 1:market.K2
+        for row_idx = col_idx:market.K2
+            x = @view market.x2[:, row_idx]      # Product characteristics
+            v = @view market.tastes[:, col_idx]  # Individual characteristics
+            jacobian[:, p] = (probabilities .* v' .* (x .- x' * probabilities)) * market.weights
+            p += 1
+        end
+    end
+
+    # Loop over the indices of pi
+    for col_idx = 1:market.D
+        for row_idx = 1:market.K2
+            x = @view market.x2[:, row_idx]            # Product characteristics
+            v = @view market.demographics[:, col_idx]  # Individual characteristics
+            jacobian[:, p] = (probabilities .* v' .* (x .- x' * probabilities)) * market.weights
+            p += 1
+        end
+    end
+
+    return jacobian
+end

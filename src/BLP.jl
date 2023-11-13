@@ -4,6 +4,8 @@ import LinearAlgebra as LA
 using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!
 using NLsolve: IsFiniteException, nlsolve, converged, only_fj!
 
+include("utils.jl")
+
 @enum InversionStatus begin
     INVERSION_CONVERGED
     INVERSION_NUMERICAL_ISSUES
