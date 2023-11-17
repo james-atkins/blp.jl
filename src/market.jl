@@ -1,19 +1,4 @@
-export Market, Theta2, NLSolveInversion, compute_mu, compute_delta
-
-struct Theta2{T <: AbstractFloat}
-    sigma::LowerTriangular{T, Matrix{T}}  # K2 x K2 lower triangle
-    pi::Matrix{T}                         # K2 x D
-end
-
-function Theta2(sigma::AbstractMatrix, pi::AbstractMatrix)
-    return Theta2(LowerTriangular(sigma), copy(pi))
-end
-
-function Theta2(sigma)
-    K2 = size(sigma, 1)
-    pi = Matrix{eltype(sigma)}(undef, K2, 0)
-    return Theta2(sigma, pi)
-end
+export Market, NLSolveInversion, compute_mu, compute_delta
 
 struct Market{
     T <: AbstractFloat,

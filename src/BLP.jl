@@ -29,6 +29,9 @@ export Iteration, fixed_point_iteration, SimpleFixedPointIteration, SQUAREMItera
 include("softmax.jl")
 export choice_probabilities, choice_probabilities!
 
+include("theta2.jl")
+export Theta2, flatten
+
 include("market.jl")
 
 end
