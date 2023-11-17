@@ -70,6 +70,20 @@ function compute_mu(market::Market, theta2::Theta2)
     return market.x2 * ((theta2.sigma * market.tastes') + (theta2.pi * market.demographics'))
 end
 
+function compute_shares_and_choice_probabilities!(
+    market::Market,
+    delta::AbstractVector,
+    theta2::Theta2,
+    shares::AbstractMatrix,
+    probabilities::AbstractMatrix,
+)
+    utilities = delta .+ compute_mu(market, theta2)
+
+    choice_probabilities!(probabilities, utilities)
+    mul!(shares, probabilities, market.weights)
+end
+
+
 Base.@kwdef struct NLSolveInversion
     method = :newton
     iterations = 1_000
@@ -168,17 +182,24 @@ function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tole
 end
 
 
-function jacobian_shares_by_delta(market::Market, probabilities::AbstractMatrix)
-    shares = probabilities * market.weights
+function jacobian_shares_by_delta!(market::Market, shares::AbstractVector, probabilities::AbstractMatrix, jacobian::AbstractMatrix)
     weighted_probabilities = probabilities .* market.weights'
 
-    return Diagonal(shares) .- (probabilities * weighted_probabilities')
+    # In-place equivalent to Diagonal(shares) - (probs * weighted_probs')
+    jacobian[:] = Diagonal(shares)
+    mul!(jacobian, probabilities, weighted_probabilities', -1, 1)
+end
+
+function jacobian_shares_by_delta(market::Market, probabilities::AbstractMatrix)
+    shares = probabilities * market.weights
+    jacobian = Matrix{eltype(market)}(undef, market.J, market.J)
+
+    jacobian_shares_by_delta!(market, shares, probabilities, jacobian)
+    return jacobian
 end
 
 
-function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix)
-    P = div(market.K2 * (market.K2 + 1), 2) + (market.K2 * market.D)
-    jacobian = Matrix{eltype(market)}(undef, market.J, P)
+function jacobian_shares_by_theta2!(market::Market, probabilities::AbstractMatrix, jacobian::AbstractMatrix)
     p = 1
 
     # Loop over the indices of sigma, i.e. indices of lower triangle matrix
@@ -200,6 +221,12 @@ function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix
             p += 1
         end
     end
+end
 
+function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix)
+    P = div(market.K2 * (market.K2 + 1), 2) + (market.K2 * market.D)
+    jacobian = Matrix{eltype(market)}(undef, market.J, P)
+
+    jacobian_shares_by_theta2!(market, probabilities, jacobian)
     return jacobian
 end

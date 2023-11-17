@@ -1,5 +1,6 @@
 module BLP
 
+using BlockDiagonals: BlockDiagonal
 import LinearAlgebra as LA
 using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!
 using NLsolve: IsFiniteException, nlsolve, converged, only_fj!
@@ -33,5 +34,8 @@ include("theta2.jl")
 export Theta2, flatten
 
 include("market.jl")
+
+include("problem.jl")
+export Problem
 
 end
