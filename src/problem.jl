@@ -1,4 +1,4 @@
-Base.@kwdef struct Problem{T <: AbstractFloat} <: GMMModel
+Base.@kwdef struct Problem{T <: AbstractFloat}
     # Products
     shares::Vector{T}    # J
     X1_exog::Matrix{T}   # J x K1_exog
