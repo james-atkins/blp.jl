@@ -46,6 +46,10 @@ function compute_shares_and_choice_probabilities!(problem::Problem, delta::Abstr
 end
 
 function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, probabilities::AbstractMatrix, jacobian::BlockDiagonal)
+    if length(problem.markets) != length(jacobian.blocks)
+        throw(DimensionMismatch("jacobian has invalid number of blocks. expected $(length(problem.markets)); actual $(length(jacobian.blocks))"))
+    end
+
     Threads.@threads for (market, mask, block) in zip(problem.markets, problem.markets_masks, jacobian.blocks)
         shares_market = @view shares[mask]
         probabilities_market = @view probabilities[mask, :]
@@ -56,6 +60,11 @@ end
 
 
 function jacobian_shares_by_theta2!(problem::Problem, probabilities::AbstractMatrix, jacobian::AbstractMatrix)
+    P = div(problem.K2 * (problem.K2 + 1), 2) + (problem.K2 * problem.D)
+    if size(jacobian) != (problem.N, P)
+        throw(DimensionMismatch("jacobian has invalid size. expected $((problem.N, P)); actual $(size(probabilities))"))
+    end
+
     Threads.@threads for (market, mask) in zip(problem.markets, problem.markets_masks)
         probabilities_market = @view probabilities[mask, :]
         jacobian_market = @view jacobian[mask, :]
