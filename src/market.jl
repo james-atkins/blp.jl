@@ -1,4 +1,4 @@
-export Market, NLSolveInversion, compute_mu, compute_delta
+export Market, NLSolveInversion, compute_mu, solve_demand
 
 struct Market{
     T <: AbstractFloat,
@@ -93,8 +93,12 @@ end
 
 """
 Solve for the mean utility for this market that equates observed and predicted market shares.
+
+Return a tuple (delta, shares, probabilities).
+
+This method uses the NLSolve package.
 """
-function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion; tolerance = 1E-14)
+function solve_demand(market::Market, theta2::Theta2, config::NLSolveInversion; tolerance = 1E-14)
     mu = compute_mu(market, theta2)
 
     # Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
@@ -142,25 +146,27 @@ function compute_delta(market::Market, theta2::Theta2, config::NLSolveInversion;
         )
     catch e
         if e isa IsFiniteException
-            return InversionResult(INVERSION_NUMERICAL_ISSUES, initial_delta, 0, 0)
+            return InversionResult(INVERSION_NUMERICAL_ISSUES, initial_delta, 0, 0), shares, probs
         else
             rethrow(e)
         end
     end
 
     if !converged(res)
-        return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, res.zero, res.iterations, res.f_calls)
+        return InversionResult(INVERSION_EXCEEDED_MAX_ITERATIONS, res.zero, res.iterations, res.f_calls), shares, probs
     end
 
-    return InversionResult(INVERSION_CONVERGED, res.zero, res.iterations, res.f_calls)
+    return InversionResult(INVERSION_CONVERGED, res.zero, res.iterations, res.f_calls), shares, probs
 end
 
 """
 Solve for the mean utility for this market that equates observed and predicted market shares.
 
+Return a tuple (delta, shares, probabilities).
+
 This method uses the BLP contraction mapping approach.
 """
-function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tolerance = 1E-14)
+function solve_demand(market::Market, theta::Theta2, iteration::Iteration; tolerance = 1E-14)
     mu = compute_mu(market, theta)
     log_market_shares = log.(market.shares)
 
@@ -178,7 +184,7 @@ function compute_delta(market::Market, theta::Theta2, iteration::Iteration; tole
         @. delta_out = delta_in + log_market_shares - log(shares)
     end
 
-    return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance)
+    return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance), shares, probabilities
 end
 
 

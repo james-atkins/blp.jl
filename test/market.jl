@@ -16,14 +16,17 @@
     delta = exp.(randn(J))
     mu = x2 * sigma * nodes'
 
-    shares = choice_probabilities(delta .+ mu) * weights
+    probs = choice_probabilities(delta .+ mu)
+    shares = probs * weights
 
     market = Market(shares, x2, weights, nodes)
 
-    result = compute_delta(market, theta2, it)
+    result, solved_shares, solved_probs = solve_demand(market, theta2, it)
 
     @test result.status == INVERSION_CONVERGED
     @test result.delta ≈ delta
+    @test solved_shares ≈ shares
+    @test solved_probs ≈ probs
 end
 
 @testset "Jacobians of market shares" begin
