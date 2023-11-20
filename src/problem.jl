@@ -189,55 +189,61 @@ Base.eltype(::Type{Problem{T}}) where {T} = T
 """
 Given guesses of `delta` and `theta2`, compute the choice probabilities and market shares.
 """
-function compute_shares_and_choice_probabilities!(problem::Problem, delta::AbstractVector, theta2::Theta2, shares::AbstractVector, probabilities::AbstractMatrix)
+function compute_shares_and_choice_probabilities!(problem::Problem, delta::AbstractVector, theta2::Theta2, shares::AbstractVector, probabilities::AbstractVector{<: AbstractMatrix})
     if length(shares) != problem.N
         throw(DimensionMismatch("shares has invalid length. expected $(problem.N); actual $(length(shares))"))
     end
 
-    if size(probabilities, 1) != problem.N
-        throw(DimensionMismatch("probabilities has invalid size. expected: $(problem.N); actual: $(size(probabilities, 1))"))
+    if length(probabilities) != length(problem.markets)
+        throw(DimensionMismatch("probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))"))
     end
 
-    for (market, mask) in zip(problem.markets, problem.products.market_masks)
+    for (market, mask, probabilities_market) in zip(problem.markets, problem.products.market_masks, probabilities)
         delta_market = @view delta[mask]
         shares_market = @view shares[mask]
-        probabilities_market = @view probabilities[mask, :]
 
         compute_shares_and_choice_probabilities!(market, delta_market, theta2, shares_market, probabilities_market)
     end
 end
 
 function compute_shares_and_choice_probabilities(problem::Problem, delta::AbstractVector, theta2::Theta2)
-    shares = Vector{eltype(problem)}(undef, problem.N)
-    probabilities = Matrix{eltype(problem)}(undef, problem.N, div(problem.I, length(problem.markets)))
+    T = eltype(problem)
+    shares = Vector{T}(undef, problem.N)
+    probabilities = [Matrix{T}(undef, market.J, market.I) for market in problem.markets]
 
     compute_shares_and_choice_probabilities!(problem, delta, theta2, shares, probabilities)
     return (shares, probabilities)
 end
 
 
-function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, probabilities::AbstractMatrix, jacobian::BlockDiagonal)
+function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, probabilities::AbstractVector{<: AbstractMatrix}, jacobian::BlockDiagonal)
+    if length(shares) != problem.N
+        throw(DimensionMismatch("shares has invalid length. expected $(problem.N); actual $(length(shares))"))
+    end
+
+    if length(probabilities) != length(problem.markets)
+        throw(DimensionMismatch("probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))"))
+    end
+
     if length(problem.markets) != length(jacobian.blocks)
         throw(DimensionMismatch("jacobian has invalid number of blocks. expected $(length(problem.markets)); actual $(length(jacobian.blocks))"))
     end
 
-    for (market, mask, block) in zip(problem.markets, problem.products.market_masks, jacobian.blocks)
+    for (market, mask, probabilities_market, block) in zip(problem.markets, problem.products.market_masks, probabilities, jacobian.blocks)
         shares_market = @view shares[mask]
-        probabilities_market = @view probabilities[mask, :]
 
         jacobian_shares_by_delta!(market, shares_market, probabilities_market, block)
     end
 end
 
 
-function jacobian_shares_by_theta2!(problem::Problem, probabilities::AbstractMatrix, jacobian::AbstractMatrix)
+function jacobian_shares_by_theta2!(problem::Problem, probabilities::AbstractVector{<: AbstractMatrix}, jacobian::AbstractMatrix)
     P = div(problem.K2 * (problem.K2 + 1), 2) + (problem.K2 * problem.D)
     if size(jacobian) != (problem.N, P)
         throw(DimensionMismatch("jacobian has invalid size. expected $((problem.N, P)); actual $(size(probabilities))"))
     end
 
-    for (market, mask) in zip(problem.markets, problem.products.market_masks)
-        probabilities_market = @view probabilities[mask, :]
+    for (market, mask, probabilities_market) in zip(problem.markets, problem.products.market_masks, probabilities)
         jacobian_market = @view jacobian[mask, :]
 
         jacobian_shares_by_theta2!(market, probabilities_market, jacobian_market)
