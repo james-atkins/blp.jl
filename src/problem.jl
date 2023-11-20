@@ -186,6 +186,20 @@ end
 
 Base.eltype(::Type{Problem{T}}) where {T} = T
 
+
+function check_compatible_theta2(problem::Problem, theta2::Theta2)
+    if size(theta2.sigma) != (problem.K2, problem.K2)
+        throw(DimensionMismatch("sigma has incompatible size. Expected $((problem.K2, problem.K2)) not $(size(theta2.sigma))"))
+    end
+
+    if size(theta2.pi) != (problem.K2, problem.D)
+        throw(DimensionMismatch("pi has incompatible size. Expected $((problem.K2, problem.D)) not $(size(theta2.pi))"))
+    end
+
+    return true
+end
+
+
 """
 Given guesses of `delta` and `theta2`, compute the choice probabilities and market shares.
 """
