@@ -36,6 +36,6 @@ export Theta2, flatten
 include("market.jl")
 
 include("problem.jl")
-export Problem
+export Problem, Products, Individuals, compute_shares_and_choice_probabilities!, jacobian_shares_by_delta!, jacobian_shares_by_theta2!
 
 end

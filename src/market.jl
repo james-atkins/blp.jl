@@ -74,7 +74,7 @@ function compute_shares_and_choice_probabilities!(
     market::Market,
     delta::AbstractVector,
     theta2::Theta2,
-    shares::AbstractMatrix,
+    shares::AbstractVector,
     probabilities::AbstractMatrix,
 )
     utilities = delta .+ compute_mu(market, theta2)
