@@ -2,7 +2,7 @@ module BLP
 
 using BlockDiagonals: BlockDiagonal
 import LinearAlgebra as LA
-using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!
+using LinearAlgebra: Diagonal, LowerTriangular, ⋅, mul!, rank
 using NLsolve: IsFiniteException, nlsolve, converged, only_fj!
 
 include("utils.jl")
