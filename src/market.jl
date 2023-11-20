@@ -1,5 +1,3 @@
-export Market, NLSolveInversion, compute_mu, solve_demand
-
 struct Market{
     T <: AbstractFloat,
     Shares <: AbstractVector{T},
