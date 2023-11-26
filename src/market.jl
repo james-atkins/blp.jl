@@ -182,11 +182,18 @@ function solve_demand(market::Market, theta::Theta2, iteration::Iteration; toler
         @. delta_out = delta_in + log_market_shares - log(shares)
     end
 
-    return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance), shares, probabilities
+    return fixed_point_iteration(iteration, logit_delta(market), contraction!, tolerance = tolerance),
+    shares,
+    probabilities
 end
 
 
-function jacobian_shares_by_delta!(market::Market, shares::AbstractVector, probabilities::AbstractMatrix, jacobian::AbstractMatrix)
+function jacobian_shares_by_delta!(
+    market::Market,
+    shares::AbstractVector,
+    probabilities::AbstractMatrix,
+    jacobian::AbstractMatrix,
+)
     weighted_probabilities = probabilities .* market.weights'
 
     # In-place equivalent to Diagonal(shares) - (probs * weighted_probs')

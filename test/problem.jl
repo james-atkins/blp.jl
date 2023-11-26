@@ -1,16 +1,16 @@
 function compute_blp_instruments(data)
-	K = size(data.X1, 2)
-	J = data.J
-	M = data.M
-	chars_array = reshape(data.X1, J, M, K)
+    K = size(data.X1, 2)
+    J = data.J
+    M = data.M
+    chars_array = reshape(data.X1, J, M, K)
 
-	# Cannot sum over over other products produced by the firm as single product
-	own_chars = data.X1
-	blp_rivals = reshape(sum(chars_array, dims=1) .- chars_array, J * M, K)
+    # Cannot sum over over other products produced by the firm as single product
+    own_chars = data.X1
+    blp_rivals = reshape(sum(chars_array, dims = 1) .- chars_array, J * M, K)
 
-	# Drop colinear column
+    # Drop colinear column
     blp_rivals = blp_rivals[:, 2:end]
-	return [own_chars blp_rivals]
+    return [own_chars blp_rivals]
 end
 
 products = begin
@@ -20,34 +20,34 @@ products = begin
     data = (
         J = J,
         M = M,
-    	product_ids = repeat(1:J, outer = M),
-    	market_ids = repeat(1:M, inner = J),
-    	shares = reshape(raw_data["shares"], :),
+        product_ids = repeat(1:J, outer = M),
+        market_ids = repeat(1:M, inner = J),
+        shares = reshape(raw_data["shares"], :),
         X1 = raw_data["x1"],
-    	prices = reshape(raw_data["P_opt"], :),
-	)
+        prices = reshape(raw_data["P_opt"], :),
+    )
 
     X2 = reshape(data.prices, :, 1)
-	Z_demand = compute_blp_instruments(data)
+    Z_demand = compute_blp_instruments(data)
 
-	Products(
-		market_ids = data.market_ids,
-		shares = data.shares,
-		prices = data.prices,
-		X1_exog = data.X1,
-		X2 = X2,
-		Z_demand = Z_demand
-	)
+    Products(
+        market_ids = data.market_ids,
+        shares = data.shares,
+        prices = data.prices,
+        X1_exog = data.X1,
+        X2 = X2,
+        Z_demand = Z_demand,
+    )
 end
 
 individuals = begin
     I = 1_000
     M = 100
-	market_ids = repeat(1:M, inner = I)
-	weights = fill(1/I, I * M)
+    market_ids = repeat(1:M, inner = I)
+    weights = fill(1 / I, I * M)
     tastes = exp.(randn(I * M, products.K2))
 
-	Individuals(market_ids, weights, tastes)
+    Individuals(market_ids, weights, tastes)
 end
 
 @testset "Jacobians of market shares for all markets" begin
@@ -68,22 +68,22 @@ end
         probabilities = [Matrix{T}(undef, market.J, market.I) for market in problem.markets]
 
         compute_shares_and_choice_probabilities!(problem, d, theta2, shares, probabilities)
-    	return shares
+        return shares
     end
 
     function compute_jacobian_shares_delta(d)
-    	shares, probs = BLP.compute_shares_and_choice_probabilities(problem, d, theta2)
+        shares, probs = BLP.compute_shares_and_choice_probabilities(problem, d, theta2)
 
-    	blocks = map(m -> Matrix{eltype(problem)}(undef, m.J, m.J), problem.markets)
+        blocks = map(m -> Matrix{eltype(problem)}(undef, m.J, m.J), problem.markets)
         jacobian = BlockDiagonal(blocks)
 
-    	jacobian_shares_by_delta!(problem, shares, probs, jacobian)
-    	return jacobian
+        jacobian_shares_by_delta!(problem, shares, probs, jacobian)
+        return jacobian
     end
 
     function compute_jacobian_shares_theta2(s)
         theta2 = Theta2(s)
-    	_, probabilities = BLP.compute_shares_and_choice_probabilities(problem, delta, theta2)
+        _, probabilities = BLP.compute_shares_and_choice_probabilities(problem, delta, theta2)
 
         P = div(problem.K2 * (problem.K2 + 1), 2) + (problem.K2 * problem.D)
         jacobian = Matrix{eltype(problem)}(undef, problem.N, P)

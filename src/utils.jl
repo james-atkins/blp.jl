@@ -58,8 +58,8 @@ end
 
 function residuals_jacobian!(ivgmm::IVGMM, jacobian)
     N = size(ivgmm.X, 1)
-    @inbounds for col_idx in 1:N
-        @inbounds for row_idx in 1:N
+    @inbounds for col_idx = 1:N
+        @inbounds for row_idx = 1:N
             if row_idx == col_idx
                 jacobian[row_idx, col_idx] = 1.0
             else
@@ -73,4 +73,3 @@ end
 function ivgmm(X::AbstractMatrix, Z::AbstractMatrix, W::AbstractMatrix, y::AbstractVector)
     return estimate(IVGMM(X, Z, W), y)
 end
-

@@ -48,21 +48,7 @@ struct Products{T <: AbstractFloat}
         K2 = size(X2, 2)
         M_demand = size(Z_demand, 2)
 
-        new{T}(
-            market_ids,
-            shares,
-            prices,
-            X1_exog,
-            X2,
-            Z_demand,
-
-            market_masks,
-
-            N,
-            K1_exog,
-            K2,
-            M_demand
-        )
+        new{T}(market_ids, shares, prices, X1_exog, X2, Z_demand, market_masks, N, K1_exog, K2, M_demand)
     end
 end
 
@@ -108,18 +94,7 @@ struct Individuals{T <: AbstractFloat}
         K2 = size(tastes, 2)
         D = size(demographics, 2)
 
-        new{T}(
-            market_ids,
-            weights,
-            tastes,
-            demographics,
-
-            market_masks,
-
-            K2,
-            I,
-            D
-        )
+        new{T}(market_ids, weights, tastes, demographics, market_masks, K2, I, D)
     end
 end
 
@@ -135,7 +110,7 @@ Base.eltype(::Type{Individuals{T}}) where {T} = T
 struct Problem{T <: AbstractFloat}
     products::Products{T}
     individuals::Individuals{T}
-    
+
     markets::Vector{Market}
 
     N::Int32         # Number of products
@@ -163,7 +138,7 @@ struct Problem{T <: AbstractFloat}
                 products.X2[pmask, :],
                 individuals.weights[imask],
                 individuals.tastes[imask, :],
-                individuals.demographics[imask, :]
+                individuals.demographics[imask, :],
             )
             push!(markets, market)
         end
@@ -171,15 +146,13 @@ struct Problem{T <: AbstractFloat}
         new{T}(
             products,
             individuals,
-
             markets,
-
             products.N,
             products.K1_exog,
             products.K2,
             products.M_demand,
             individuals.I,
-            individuals.D
+            individuals.D,
         )
     end
 end
@@ -189,7 +162,11 @@ Base.eltype(::Type{Problem{T}}) where {T} = T
 
 function check_compatible_theta2(problem::Problem, theta2::Theta2)
     if size(theta2.sigma) != (problem.K2, problem.K2)
-        throw(DimensionMismatch("sigma has incompatible size. Expected $((problem.K2, problem.K2)) not $(size(theta2.sigma))"))
+        throw(
+            DimensionMismatch(
+                "sigma has incompatible size. Expected $((problem.K2, problem.K2)) not $(size(theta2.sigma))",
+            ),
+        )
     end
 
     if size(theta2.pi) != (problem.K2, problem.D)
@@ -203,13 +180,23 @@ end
 """
 Given guesses of `delta` and `theta2`, compute the choice probabilities and market shares.
 """
-function compute_shares_and_choice_probabilities!(problem::Problem, delta::AbstractVector, theta2::Theta2, shares::AbstractVector, probabilities::AbstractVector{<: AbstractMatrix})
+function compute_shares_and_choice_probabilities!(
+    problem::Problem,
+    delta::AbstractVector,
+    theta2::Theta2,
+    shares::AbstractVector,
+    probabilities::AbstractVector{<:AbstractMatrix},
+)
     if length(shares) != problem.N
         throw(DimensionMismatch("shares has invalid length. expected $(problem.N); actual $(length(shares))"))
     end
 
     if length(probabilities) != length(problem.markets)
-        throw(DimensionMismatch("probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))"))
+        throw(
+            DimensionMismatch(
+                "probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))",
+            ),
+        )
     end
 
     for (market, mask, probabilities_market) in zip(problem.markets, problem.products.market_masks, probabilities)
@@ -237,7 +224,7 @@ function solve_demand(problem::Problem, theta2::Theta2, method; tolerance = 1E-1
     results = Vector{InversionResult}(undef, length(problem.markets))
     probabilities = Vector{Matrix{eltype(problem)}}(undef, length(problem.markets))
 
-    Threads.@threads for idx in 1:length(problem.markets)
+    Threads.@threads for idx = 1:length(problem.markets)
         market = problem.markets[idx]
         result, _, probs_market = solve_demand(market, theta2, method; tolerance = tolerance)
         results[idx] = result
@@ -255,20 +242,34 @@ function solve_demand(problem::Problem, theta2::Theta2, method; tolerance = 1E-1
 end
 
 
-function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, probabilities::AbstractVector{<: AbstractMatrix}, jacobian::BlockDiagonal)
+function jacobian_shares_by_delta!(
+    problem::Problem,
+    shares::AbstractVector,
+    probabilities::AbstractVector{<:AbstractMatrix},
+    jacobian::BlockDiagonal,
+)
     if length(shares) != problem.N
         throw(DimensionMismatch("shares has invalid length. expected $(problem.N); actual $(length(shares))"))
     end
 
     if length(probabilities) != length(problem.markets)
-        throw(DimensionMismatch("probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))"))
+        throw(
+            DimensionMismatch(
+                "probabilities has invalid length. expected: $(length(problem.markets)); actual: $(length(probabilities))",
+            ),
+        )
     end
 
     if length(problem.markets) != length(jacobian.blocks)
-        throw(DimensionMismatch("jacobian has invalid number of blocks. expected $(length(problem.markets)); actual $(length(jacobian.blocks))"))
+        throw(
+            DimensionMismatch(
+                "jacobian has invalid number of blocks. expected $(length(problem.markets)); actual $(length(jacobian.blocks))",
+            ),
+        )
     end
 
-    for (market, mask, probabilities_market, block) in zip(problem.markets, problem.products.market_masks, probabilities, jacobian.blocks)
+    for (market, mask, probabilities_market, block) in
+        zip(problem.markets, problem.products.market_masks, probabilities, jacobian.blocks)
         shares_market = @view shares[mask]
 
         jacobian_shares_by_delta!(market, shares_market, probabilities_market, block)
@@ -276,7 +277,11 @@ function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, pro
 end
 
 
-function jacobian_shares_by_theta2!(problem::Problem, probabilities::AbstractVector{<: AbstractMatrix}, jacobian::AbstractMatrix)
+function jacobian_shares_by_theta2!(
+    problem::Problem,
+    probabilities::AbstractVector{<:AbstractMatrix},
+    jacobian::AbstractMatrix,
+)
     P = div(problem.K2 * (problem.K2 + 1), 2) + (problem.K2 * problem.D)
     if size(jacobian) != (problem.N, P)
         throw(DimensionMismatch("jacobian has invalid size. expected $((problem.N, P)); actual $(size(probabilities))"))

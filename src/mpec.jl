@@ -2,7 +2,7 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     check_compatible_theta2(problem, theta2)
 
     N = problem.N
-    X1 = [ problem.products.X1_exog problem.products.prices ]
+    X1 = [problem.products.X1_exog problem.products.prices]
     Z = problem.products.Z_demand
     W = Symmetric(inv(cholesky(Z' * Z)))
 
@@ -38,7 +38,7 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     # Second stage
     @info "Running second stage"
     g = gmm_moments(result)
-    centered_g = g .- mean(g, dims=1)
+    centered_g = g .- mean(g, dims = 1)
 
     # Compute heteroscedasticity robust weighting matrix
     W2 = Symmetric(inv(chol_tcrossprod(centered_g)))
@@ -61,7 +61,7 @@ function solve_mpec(problem::Problem, theta2::Theta2)
 end
 
 struct MPECProblem{T <: AbstractFloat} <: GMMModel
-	p::Problem{T}
+    p::Problem{T}
     unflatten::Function
     ivgmm::IVGMM{T}
 end
@@ -84,7 +84,7 @@ function gmm_num_parameters(problem::MPECProblem)
     K2 = problem.p.K2
     D = problem.p.D
     P = div(K2 * (K2 + 1), 2) + (K2 * D)
-	return Int64(problem.p.N + P)
+    return Int64(problem.p.N + P)
 end
 
 function gmm_instruments(problem::MPECProblem)
@@ -100,26 +100,26 @@ function gmm_residuals_constraints!(problem::MPECProblem, params, residuals, con
 
     @assert T != Any
 
-	delta, theta2_flat = params[1:N], params[N+1:end]
+    delta, theta2_flat = params[1:N], params[N+1:end]
     @assert length(delta) == N
     @assert length(theta2_flat) == P
 
-	theta2 = problem.unflatten(theta2_flat)
+    theta2 = problem.unflatten(theta2_flat)
 
     # TODO: These should be preallocated in advance and reused across loops
     probabilities = [Matrix{T}(undef, market.J, market.I) for market in problem.p.markets]
 
-	### Compute the residuals r(δ, θ₂) = ξ(δ, θ₂)
+    ### Compute the residuals r(δ, θ₂) = ξ(δ, θ₂)
     if residuals !== nothing
-    	@assert length(residuals) == N
+        @assert length(residuals) == N
         residuals!(problem.ivgmm, delta, residuals)
     end
 
-	### Compute the constraint c(δ, θ₂) = s(δ, θ₂) - S
+    ### Compute the constraint c(δ, θ₂) = s(δ, θ₂) - S
     if constraints !== nothing
-    	@assert length(constraints) == N
+        @assert length(constraints) == N
         compute_shares_and_choice_probabilities!(problem.p, delta, theta2, constraints, probabilities)
-    	@. constraints -= problem.p.products.shares
+        @. constraints -= problem.p.products.shares
     end
 end
 
@@ -134,10 +134,10 @@ function gmm_residuals_constraints_jacobians!(problem::MPECProblem, params, resi
     @assert size(residuals_jacobian) == (N, N + P)
     @assert size(constraints_jacobian) == (N, N + P)
 
-	delta, theta2_flat = params[1:N], params[N+1:end]
+    delta, theta2_flat = params[1:N], params[N+1:end]
     @assert length(delta) == N
     @assert length(theta2_flat) == P
-	theta2 = problem.unflatten(theta2_flat)
+    theta2 = problem.unflatten(theta2_flat)
 
     # TODO: These should be preallocated in advance and reused across loops
     shares = Vector{T}(undef, N)
@@ -161,4 +161,3 @@ function gmm_residuals_constraints_jacobians!(problem::MPECProblem, params, resi
     constraints_jacobian[:, 1:N] = jacobian_shares_by_delta
     constraints_jacobian[:, N+1:end] = jacobian_shares_by_theta2
 end
-

@@ -52,7 +52,12 @@ include("market.jl")
 export Market, NLSolveInversion, compute_mu, solve_demand
 
 include("problem.jl")
-export Problem, Products, Individuals, compute_shares_and_choice_probabilities!, jacobian_shares_by_delta!, jacobian_shares_by_theta2!
+export Problem,
+    Products,
+    Individuals,
+    compute_shares_and_choice_probabilities!,
+    jacobian_shares_by_delta!,
+    jacobian_shares_by_theta2!
 
 include("mpec.jl")
 export solve_mpec
