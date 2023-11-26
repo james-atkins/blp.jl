@@ -21,6 +21,9 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
+      - name: Add GMM
+        run: |-
+          julia -e "import Pkg; Pkg.add(url=\"https://github.com/james-atkins/GMM.jl\")"
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
 
