@@ -230,6 +230,31 @@ function compute_shares_and_choice_probabilities(problem::Problem, delta::Abstra
 end
 
 
+"""
+Solve for the mean utility that equates observed and predicted market shares.
+"""
+function solve_demand(problem::Problem, theta2::Theta2, method; tolerance = 1E-14)
+    results = Vector{InversionResult}(undef, length(problem.markets))
+    probabilities = Vector{Matrix{eltype(problem)}}(undef, length(problem.markets))
+
+    Threads.@threads for idx in 1:length(problem.markets)
+        market = problem.markets[idx]
+        result, _, probs_market = solve_demand(market, theta2, method; tolerance = tolerance)
+        results[idx] = result
+        probabilities[idx] = probs_market
+    end
+
+    for result in results
+        if result.status != INVERSION_CONVERGED
+            @info "Market did not converge: $(result.status)"
+        end
+    end
+
+    delta = mapreduce(r -> r.delta, vcat, results)
+    return delta, probabilities
+end
+
+
 function jacobian_shares_by_delta!(problem::Problem, shares::AbstractVector, probabilities::AbstractVector{<: AbstractMatrix}, jacobian::BlockDiagonal)
     if length(shares) != problem.N
         throw(DimensionMismatch("shares has invalid length. expected $(problem.N); actual $(length(shares))"))
@@ -265,31 +290,27 @@ function jacobian_shares_by_theta2!(problem::Problem, probabilities::AbstractVec
 end
 
 
-function make_concentrator(problem::Problem, W)
+"""
+The problem can be simplified by noting the following:
+
+Let W = U'U be the Cholesky decomposition of W and let QR = UZ'X be the thin QR decomposition of UZ'X.
+Then we can form both the quadratic objective and concentrate out the linear parameters at the same time
+by using the adjusted weighting matrix W̃ = U'(I - QQ')U.
+"""
+function make_adjusted_weighting_matrix(problem::Problem, W)
     X1 = [problem.products.X1_exog problem.products.prices]
-    Z_demand = problem.products.Z_demand
+    Z = problem.products.Z_demand
 
-    # W is positive definite as it is a GMM weighting matrix and (Z' X₁) has full rank so
-    # A = (Z' X₁)' W (Z' X₁) is also positive definite
+    # Compute modified weighing matrix W̃ = U'(I - QQ')U that both forms the quadratic GMM objective
+    # and concentrates out linear parameters.
     W_chol = cholesky(W)
-    X1_Z_L = X1' * Z_demand * W_chol.L
+    Q, _ = qr(W_chol.U * Z' * X1)
+    Q_thin = Matrix(Q)
+    W_tilde = LowerTriangular(W_chol.L) * Symmetric(LA.I - (Q_thin * Q_thin')) * UpperTriangular(W_chol.U)
 
-    A = cholesky(X1_Z_L * X1_Z_L')
-    X1_Z_W_Z = X1_Z_L * W_chol.U * Z_demand'
+    # Enforce symmetry
+    @assert isapprox(W_tilde, W_tilde')
+    W_tilde = Symmetric(W_tilde .+ W_tilde / 2)
 
-    """
-    We need to perform a non-linear search over θ. We reduce the time required by expressing θ₁
-    as a function of θ₂: θ₁ = (X₁' Z W Z' X₁)⁻¹ X₁' Z W Z' 𝛿(θ₂)
-    """
-    function concentrate_out_linear_parameters!(delta, residuals)
-        # Rewrite the above equation and solve for θ₁ rather than inverting matrices
-        # X₁' Z W Z' X₁ θ₁ = X₁' Z W Z' 𝛿(θ₂)
-        b = X1_Z_W_Z * delta
-
-        theta_1_hat = A \ b
-        residuals .= delta .- (X1 * theta_1_hat)
-    end
-
-    return concentrate_out_linear_parameters!
+    return W_tilde
 end
-
