@@ -4,7 +4,7 @@
 
 Return the (linear) indices of a lower triangle matrix.
 """
-function tril_indices(A::LowerTriangular)
+function tril_indices(A::AbstractMatrix)
     n = size(A, 1)
     linear_indices = LinearIndices(A)
     low_tri_indices = Vector{Int64}(undef, 0)

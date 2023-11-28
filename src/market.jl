@@ -1,10 +1,10 @@
 struct Market{
     T <: AbstractFloat,
     Shares <: AbstractVector{T},
-    X2 <: AbstractMatrix{T},
+    X2 <: NamedMatrix{T},
     Weights <: AbstractVector{T},
-    Tastes <: AbstractMatrix{T},
-    Demographics <: AbstractMatrix{T},
+    Tastes <: NamedMatrix{T},
+    Demographics <: NamedMatrix{T},
 }
     shares::Shares              # J
     x2::X2                      # J x K2
@@ -17,7 +17,7 @@ struct Market{
     K2::Int32  # Number of demand-side nonlinear product characteristics
     D::Int32   # Number of demographic variables
 
-    function Market(shares, x2, weights, tastes, demographics)
+    function Market(shares::AbstractVector, x2::NamedMatrix, weights::AbstractVector, tastes::NamedMatrix, demographics::NamedMatrix)
         if !allequal([size(x, 1) for x in [shares, x2]])
             throw(DimensionMismatch())
         end
@@ -28,6 +28,10 @@ struct Market{
 
         if !allequal([size(x, 2) for x in [x2, tastes]])
             throw(DimensionMismatch())
+        end
+
+        if names(x2, 2) != names(tastes, 2)
+            throw(DimensionMismatch("X2 and tastes must have the same characteristics"))
         end
 
         J, K2 = size(x2)
@@ -48,8 +52,9 @@ struct Market{
     end
 end
 
-function Market(shares, x2, weights, tastes)
-    demographics = Matrix{Float64}(undef, length(weights), 0)
+function Market(shares::AbstractVector, x2::NamedMatrix, weights::AbstractVector, tastes::NamedMatrix)
+    demographics = NamedArray(Matrix{Float64}(undef, length(weights), 0))
+    setdimnames!(demographics, ["individuals", "demographics"])
     return Market(shares, x2, weights, tastes, demographics)
 end
 
@@ -81,6 +86,16 @@ function compute_shares_and_choice_probabilities!(
     mul!(shares, probabilities, market.weights)
 end
 
+function compute_shares_and_choice_probabilities(market::Market, delta::AbstractVector, theta2::Theta2)
+    utilities = delta .+ compute_mu(market, theta2)
+
+    shares = similar(delta)
+    probabilities = similar(utilities)
+
+    compute_shares_and_choice_probabilities!(market, delta, theta2, shares, probabilities)
+    return shares, probabilities
+end
+
 
 Base.@kwdef struct NLSolveInversion
     method = :newton
@@ -97,7 +112,7 @@ Return a tuple (delta, shares, probabilities).
 This method uses the NLSolve package.
 """
 function solve_demand(market::Market, theta2::Theta2, config::NLSolveInversion; tolerance = 1E-14)
-    mu = compute_mu(market, theta2)
+    mu = parent(compute_mu(market, theta2))
 
     # Speed is imperative for solving the inner loop so avoid unnecessary memory allocations by
     # pre-allocating and then using in-place operations. Unfortunately, this makes the code a bit
@@ -165,7 +180,7 @@ Return a tuple (delta, shares, probabilities).
 This method uses the BLP contraction mapping approach.
 """
 function solve_demand(market::Market, theta::Theta2, iteration::Iteration; tolerance = 1E-14)
-    mu = compute_mu(market, theta)
+    mu = parent(compute_mu(market, theta))  # Strip the NamedMatrix for speed
     log_market_shares = log.(market.shares)
 
     # Speed is imperative for the contraction mapping so avoid unnecessary memory allocations by
@@ -216,8 +231,8 @@ function jacobian_shares_by_theta2!(market::Market, probabilities::AbstractMatri
     # Loop over the indices of sigma, i.e. indices of lower triangle matrix
     for col_idx = 1:market.K2
         for row_idx = col_idx:market.K2
-            x = @view market.x2[:, row_idx]      # Product characteristics
-            v = @view market.tastes[:, col_idx]  # Individual characteristics
+            x = parent(@view market.x2[:, row_idx])      # Product characteristics
+            v = parent(@view market.tastes[:, col_idx])  # Individual characteristics
             jacobian[:, p] = (probabilities .* v' .* (x .- x' * probabilities)) * market.weights
             p += 1
         end
@@ -226,8 +241,8 @@ function jacobian_shares_by_theta2!(market::Market, probabilities::AbstractMatri
     # Loop over the indices of pi
     for col_idx = 1:market.D
         for row_idx = 1:market.K2
-            x = @view market.x2[:, row_idx]            # Product characteristics
-            v = @view market.demographics[:, col_idx]  # Individual characteristics
+            x = parent(@view market.x2[:, row_idx])            # Product characteristics
+            v = parent(@view market.demographics[:, col_idx])  # Individual characteristics
             jacobian[:, p] = (probabilities .* v' .* (x .- x' * probabilities)) * market.weights
             p += 1
         end
@@ -239,5 +254,24 @@ function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix
     jacobian = Matrix{eltype(market)}(undef, market.J, P)
 
     jacobian_shares_by_theta2!(market, probabilities, jacobian)
+    return jacobian
+end
+
+
+function jacobian_shares_by_price!(market::Market, probabilities::AbstractMatrix, theta2::Theta2, var_idx::Int64, jacobian::AbstractMatrix)
+    # The derivative of the ith characteristic is given by the ith row of Σv'
+	# 1 x I matrix
+    # TODO: demographics
+    A = @. (theta2.alpha + (theta2.sigma[var_idx, :] * market.tastes')) * probabilities
+    weighted_probs = probabilities .* market.weights'
+
+    jacobian .= Diagonal(A * market.weights)
+    mul!(jacobian, A, weighted_probs', -1, 1)
+end
+
+function jacobian_shares_by_price(market::Market, probabilities::AbstractMatrix, theta2::Theta2, var_idx::Int64)
+    jacobian = Matrix{eltype(market)}(undef, market.J, market.J)
+    jacobian_shares_by_price!(market, probabilities, theta2, var_idx, jacobian)
+
     return jacobian
 end

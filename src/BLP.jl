@@ -3,6 +3,7 @@ module BLP
 using BlockDiagonals: BlockDiagonal
 import LinearAlgebra as LA
 using LinearAlgebra: Diagonal, Symmetric, LowerTriangular, UpperTriangular, Cholesky, ⋅, mul!, rank, cholesky, qr
+using NamedArrays: NamedArray, NamedVector, NamedMatrix, names, setdimnames!, setnames!
 using NLsolve: IsFiniteException, nlsolve, converged, only_fj!
 using Statistics: mean
 
