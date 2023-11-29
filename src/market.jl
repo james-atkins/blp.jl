@@ -81,6 +81,16 @@ function compute_shares_and_choice_probabilities!(
     mul!(shares, probabilities, market.weights)
 end
 
+function compute_shares_and_choice_probabilities(market::Market, delta::AbstractVector, theta2::Theta2)
+    utilities = delta .+ compute_mu(market, theta2)
+
+    shares = similar(delta)
+    probabilities = similar(utilities)
+
+    compute_shares_and_choice_probabilities!(market, delta, theta2, shares, probabilities)
+    return shares, probabilities
+end
+
 
 Base.@kwdef struct NLSolveInversion
     method = :newton
