@@ -71,3 +71,35 @@ end
     @test isapprox(shares_delta_jacobian, shares_delta_jacobian_fd, rtol = 1E-6)
     @test eltype(shares_delta_jacobian) != Any
 end
+
+@testset "Jacobian of shares wrt price" begin
+    Random.seed!(123)
+    theta2 = Theta2(-0.5, fill(-1.2, 1, 1))
+
+    J = 50
+    I = 1000
+    K2 = size(theta2.sigma, 1)
+
+    prices = exp.(randn((J)))
+    tastes = randn((I, K2))
+    weights = fill(1 / I, I)
+
+    mu = prices * theta2.sigma * tastes'
+    xi = exp.(randn(J))
+    probs = choice_probabilities(xi .+ (prices * theta2.alpha) .+ mu)
+    market = Market(probs * weights, reshape(prices, :, 1), weights, tastes)
+
+    function shares_price(prices)
+        market_new = Market(market.shares, reshape(prices, :, 1), market.weights, market.tastes)
+        delta = xi + (theta2.alpha * prices)
+
+        shares, probs = BLP.compute_shares_and_choice_probabilities(market_new, delta, theta2)
+
+        return shares
+    end
+
+    shares_prices_jacobian_fd = finite_difference_jacobian(p -> shares_price(p), prices)
+    shares_prices_jacobian = BLP.jacobian_shares_by_price(market, probs, theta2, 1)
+    @test isapprox(shares_prices_jacobian, shares_prices_jacobian_fd, rtol = 1E-5)
+    @test isapprox(shares_prices_jacobian, shares_prices_jacobian')
+end

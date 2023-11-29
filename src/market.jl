@@ -251,3 +251,21 @@ function jacobian_shares_by_theta2(market::Market, probabilities::AbstractMatrix
     jacobian_shares_by_theta2!(market, probabilities, jacobian)
     return jacobian
 end
+
+function jacobian_shares_by_price!(market::Market, probabilities::AbstractMatrix, theta2::Theta2, var_idx::Int64, jacobian::AbstractMatrix)
+    # The derivative of the ith characteristic is given by the ith row of Σv'
+	# 1 x I matrix
+    # TODO: demographics
+    A = @. (theta2.alpha + (theta2.sigma[var_idx, :] * market.tastes')) * probabilities
+    weighted_probs = probabilities .* market.weights'
+
+    jacobian .= Diagonal(A * market.weights)
+    mul!(jacobian, A, weighted_probs', -1, 1)
+end
+
+function jacobian_shares_by_price(market::Market, probabilities::AbstractMatrix, theta2::Theta2, var_idx::Int64)
+    jacobian = Matrix{eltype(market)}(undef, market.J, market.J)
+    jacobian_shares_by_price!(market, probabilities, theta2, var_idx, jacobian)
+
+    return jacobian
+end
