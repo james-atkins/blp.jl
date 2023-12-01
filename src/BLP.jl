@@ -18,7 +18,14 @@ import GMM:
     gmm_num_parameters,
     gmm_instruments,
     gmm_residuals_constraints!,
-    gmm_residuals_constraints_jacobians!
+    gmm_residuals_constraints_jacobians!,
+    gmm_success,
+    gmm_objective_value,
+    gmm_estimate,
+    gmm_moments,
+    gmm_moments_jacobian,
+    gmm_constraints_jacobian
+
 
 include("utils.jl")
 

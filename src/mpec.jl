@@ -57,7 +57,25 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     theta1_hat = estimate(mpec.ivgmm, delta_solved)
     @info theta1_hat
 
-    return theta2_solved
+    shares, probs = compute_shares_and_choice_probabilities(problem, delta_solved, theta2_solved)
+
+    return MPECSolution(
+        objective_value = gmm_objective_value(result),
+        theta1 = theta1_hat,
+        theta2 = theta2_solved,
+        delta = delta_solved,
+        probabilities = probs,
+        shares = shares,
+    )
+end
+
+Base.@kwdef struct MPECSolution
+    objective_value::Float64
+    theta1::Vector{Float64}
+    theta2::Theta2
+    delta::Vector{Float64}
+    probabilities::Vector{Matrix{Float64}}
+    shares::Vector{Float64}
 end
 
 struct MPECProblem{T <: AbstractFloat} <: GMMModel
