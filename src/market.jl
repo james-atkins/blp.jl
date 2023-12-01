@@ -256,7 +256,8 @@ function jacobian_shares_by_price!(market::Market, probabilities::AbstractMatrix
     # The derivative of the ith characteristic is given by the ith row of Σv'
 	# 1 x I matrix
     # TODO: demographics
-    A = @. (theta2.alpha + (theta2.sigma[var_idx, :] * market.tastes')) * probabilities
+    alpha = theta2.alpha === nothing ? 0.0 : theta2.alpha
+    A = @. (alpha + (theta2.sigma[var_idx, :] * market.tastes')) * probabilities
     weighted_probs = probabilities .* market.weights'
 
     jacobian .= Diagonal(A * market.weights)

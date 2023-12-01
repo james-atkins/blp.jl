@@ -302,12 +302,19 @@ function jacobian_shares_by_price!(
     x2_price_idx::Int64,  # which column of X2 is price
     jacobian::BlockDiagonal,
 )
-    @assert length(probabilities) != length(problem.markets) "probabilities has invalid length"
-    @assert length(problem.markets) != length(jacobian.blocks) "jacobian has invalid number of blocks"
+    @assert length(probabilities) == length(problem.markets) "probabilities has invalid length"
+    @assert length(problem.markets) == length(jacobian.blocks) "jacobian has invalid number of blocks"
 
-    for (market, probabilities_market, jacobian_market) in zip(problem.markets, probabilities, jacobian)
+    for (market, probabilities_market, jacobian_market) in zip(problem.markets, probabilities, jacobian.blocks)
         jacobian_shares_by_price!(market, probabilities_market, theta2, x2_price_idx, jacobian_market)
     end
+end
+
+function jacobian_shares_by_price(problem::Problem, theta2::Theta2, probabilities::AbstractVector{<:AbstractMatrix}, x2_price_idx::Int64)
+    blocks = [Matrix{eltype(problem)}(undef, market.J, market.J) for market in problem.markets]
+    jacobian = BlockDiagonal(blocks)
+    jacobian_shares_by_price!(problem, theta2, probabilities, x2_price_idx, jacobian)
+    return jacobian
 end
 
 
