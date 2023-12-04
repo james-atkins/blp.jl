@@ -33,10 +33,9 @@ function solve_mpec(problem::Problem, theta2::Theta2)
 
     # Retrieve theta 1
     theta1_hat = estimate(mpec.ivgmm, delta_solved)
-    @info theta1_hat
 
     # Second stage
-    @info "Running second stage"
+    @info "Running GMM step 2"
     g = gmm_moments(result)
     centered_g = g .- mean(g, dims = 1)
 
@@ -55,16 +54,42 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     theta2_solved = unflatten(theta2_flat_solved)
 
     theta1_hat = estimate(mpec.ivgmm, delta_solved)
-    @info theta1_hat
 
-    shares, probs = compute_shares_and_choice_probabilities(problem, delta_solved, theta2_solved)
+    shares, probabilities = compute_shares_and_choice_probabilities(problem, delta_solved, theta2_solved)
+
+    P = div(problem.K2 * (problem.K2 + 1), 2) + (problem.K2 * problem.D)
+
+    blocks = [Matrix{eltype(problem)}(undef, market.J, market.J) for market in problem.markets]
+    jacobian_shares_by_delta = BlockDiagonal(blocks)
+    jacobian_shares_by_theta2 = Matrix{eltype(problem)}(undef, N, P)
+
+    jacobian_shares_by_delta!(problem, shares, probabilities, jacobian_shares_by_delta)
+    jacobian_shares_by_theta2!(problem, probabilities, jacobian_shares_by_theta2)
+
+    jacobian_delta_by_theta2 = -jacobian_shares_by_delta \ jacobian_shares_by_theta2
+    G = Z' * jacobian_delta_by_theta2
+
+    g = gmm_moments(result)
+    centered_g = g .- mean(g, dims = 1)
+
+    B = centered_g' * centered_g
+    W2_chol = cholesky(W2)
+    bread = Symmetric(inv(chol_tcrossprod(W2_chol.U * G)))
+
+    V = bread * G' * W2 * B * W2 * G * bread
+
+    # Delta rule
+    grad_h = mpec.ivgmm.S * jacobian_delta_by_theta2
+    V_theta1 = grad_h * V * grad_h'
 
     return MPECSolution(
         objective_value = gmm_objective_value(result),
         theta1 = theta1_hat,
+        theta1_stderrs = sqrt.(diag(V_theta1)),
         theta2 = theta2_solved,
+        theta2_stderrs = sqrt.(diag(V)),
         delta = delta_solved,
-        probabilities = probs,
+        probabilities = probabilities,
         shares = shares,
     )
 end
@@ -72,7 +97,9 @@ end
 Base.@kwdef struct MPECSolution
     objective_value::Float64
     theta1::Vector{Float64}
+    theta1_stderrs::Vector{Float64}
     theta2::Theta2
+    theta2_stderrs::Vector{Float64}
     delta::Vector{Float64}
     probabilities::Vector{Matrix{Float64}}
     shares::Vector{Float64}
