@@ -1,4 +1,4 @@
-function solve_mpec(problem::Problem, theta2::Theta2)
+function solve_mpec(problem::Problem, theta2::Theta2, knitro_options...)
     check_compatible_theta2(problem, theta2)
 
     N = problem.N
@@ -9,8 +9,9 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     # This is nothing MPEC specific and should be extracted for use by solve_nfp too
     theta2_flat, unflatten = flatten(theta2)
 
+    @info "Running GMM step 1"
     mpec = MPECProblem(problem, unflatten, IVGMM(X1, Z, W))
-    result = solve(mpec, W)
+    result = solve(mpec, W, knitro_options...)
     if !gmm_success(result)
         error("Knitro could not solve MPEC")
     end
@@ -43,7 +44,7 @@ function solve_mpec(problem::Problem, theta2::Theta2)
     W2 = Symmetric(inv(chol_tcrossprod(centered_g)))
 
     mpec2 = MPECProblem(problem, unflatten, IVGMM(X1, Z, W2))
-    result = solve(mpec2, W2)
+    result = solve(mpec2, W2, knitro_options...)
     if !gmm_success(result)
         error("Knitro could not solve MPEC")
     end
